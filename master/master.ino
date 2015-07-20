@@ -133,7 +133,7 @@ void setup() {
         
         Serial.begin(115200);
         Serial.println("Kicker-Funkmaster up and running!");
-        Serial.println("(c) by Patrick H. Jill H. Kjell-Arne L. Janina L. Moritz M. Jan N. Fabian S.");
+        Serial.println("(c) by Patrick H. Jill Catherine H. Kjell-Arne L. Janina L. Moritz M. Jan N. Fabian S.");
         
         
         if (!rf24.init())  { //Initialisierung des Funkmoduls fehlgeschlagen? 
