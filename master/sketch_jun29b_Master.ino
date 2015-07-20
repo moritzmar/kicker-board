@@ -28,7 +28,7 @@ FS
 #include <SoftwareSerial.h>
 #include <SPI.h>
 #include <TimerOne.h>
-
+#include <util/crc16.h>
 
 #define RFM24_SS 6
 #define RFM24_MOSI 11
@@ -44,6 +44,15 @@ int CallSlave_a = 1;
 int CallSlave_b = 0;
 uint8_t AddressTemp, Data1Temp, Data2Temp, crc8Temp, Address, Data1, Data2, crc8;
 uint8_t Package[4]={};
+
+uint8_t calc_crc8(char * dataIn, uint8_t len)// uses the ccitt generator polynom 0x07
+{
+  uint8_t i = 0, last_crc = 0;
+  for (i = 0; i<len; i++){
+    last_crc = _crc8_ccitt_update(last_crc, dataIn[i]);
+  }
+  return last_crc;
+}
 
 void setup(void){
   Timer1.initialize(2500000); //5000000 entspricht 2.5 sec
