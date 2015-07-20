@@ -20,6 +20,10 @@ volatile uint16_t btn_b_state = 0;
 volatile uint16_t btn_a_hold = 0;
 volatile uint16_t btn_b_hold = 0;
 
+uint8_t send_buf [] = "Hello World";
+uint8_t recv_buf[64] = {};
+uint8_t recv_buf_len = sizeof(recv_buf);
+
 const uint8_t segments_lut_1 [] =  {0x3E, 0x30, 0x2D, 0x39, 0x33, 0x1B, 0x1F, 0x30, 0x3F, 0x3B};
 const uint8_t segments_lut_2 [] =  {0x80, 0x00, 0x80, 0x80, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80};
 
@@ -125,6 +129,11 @@ void button_worker(void) {
 	}
 }
 
+void rfm24_on() {
+  rf24.setModeIdle();
+  rf24.setFrequency(433.000);
+}
+
 void setup() {
         cli(); // global Interrupt disable, prevents flicker while initialzing
 	// put your setup code here, to run once:
@@ -151,18 +160,14 @@ void setup() {
         
         rf24.setModemConfig(RH_RF24::GFSK_Rb5Fd10);
         rf24.setTxPower(0x4f);
+  	rfm24_on();
         #ifdef DEBUG 
         Serial.println("Modem configured in GFSK modulation with 5kbs and 10kHz decimation");
-        #endif 
-        sei(); // global Interrupt enable
-}  
+        #endif
 
-void rfm24_on() {
-  rf24.setModeIdle();
-  rf24.setFrequency(433.000);
+        sei(); // global Interrupt enable
 }
 
-uint8_t demo_pkg[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,0xDE, 0xAD, 0xBE, 0xEF,};
 
 void loop() {
 	// put your main code here, to run repeatedly:
@@ -179,8 +184,6 @@ void loop() {
 			score_a++;
                         Serial.print("Score for team A is ");
                         Serial.println(score_a);
-                        rf24.send(demo_pkg, sizeof(demo_pkg));
-
                     }
 		btn_a_state = 0;
 	}
@@ -193,6 +196,18 @@ void loop() {
 		}
 		btn_b_state = 0;
 	}
+
+	//rf24.send(send_buf, 13);
+  	//delay(100);
+	//if() {
+	rf24.waitAvailableTimeout(500);
+	rf24.recv(recv_buf, &recv_buf_len);
+		Serial.println((char *)recv_buf);
+	//}
+
+
+
+  	//delay(100);
 }
 
 ISR(TIMER2_OVF_vect) { // Will be called with roughly 183,1 Hz
