@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include <RH_RF24.h>
+#include <util/crc16.h>
 
 #define DEBUG 1
 
@@ -8,8 +9,10 @@
 #define RFM24_MISO 12 
 #define RFM24_IRQ 2
 #define RFM24_SDN 5
-RH_RF24 rf24 = RH_RF24(RFM24_SS, RFM24_IRQ, RFM24_SDN); //Initialize a new instance of the RadioHead RFM24W driver as rf24
 
+unsigned char master_address = 0x01;
+unsigned char slave_a_address = 0xBE;
+unsigned char slave_b_address = 0xEF;
 
 static uint8_t score_a = 0;
 static uint8_t score_b = 0;
@@ -20,12 +23,11 @@ volatile uint16_t btn_b_state = 0;
 volatile uint16_t btn_a_hold = 0;
 volatile uint16_t btn_b_hold = 0;
 
-uint8_t send_buf [] = "Hello World";
-uint8_t recv_buf[64] = {};
-uint8_t recv_buf_len = sizeof(recv_buf);
-
 const uint8_t segments_lut_1 [] =  {0x3E, 0x30, 0x2D, 0x39, 0x33, 0x1B, 0x1F, 0x30, 0x3F, 0x3B};
 const uint8_t segments_lut_2 [] =  {0x80, 0x00, 0x80, 0x80, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80};
+
+
+RH_RF24 rf24 = RH_RF24(RFM24_SS, RFM24_IRQ, RFM24_SDN); //Initialize a new instance of the RadioHead RFM24W driver as rf24
 
 void timer_setup(void) {
 	TCCR2B |= ((1 << CS22) | (1 << CS21) ); // Prescaler 256 on Timer2
@@ -129,9 +131,25 @@ void button_worker(void) {
 	}
 }
 
-void rfm24_on() {
-  rf24.setModeIdle();
-  rf24.setFrequency(433.000);
+uint8_t calc_crc8(uint8_t * dataIn, uint8_t len)// uses the ccitt generator polynom 0x07
+{
+  uint8_t i = 0, last_crc = 0;
+  for (i = 0; i<len; i++){
+    last_crc = _crc8_ccitt_update(last_crc, dataIn[i]);
+  }
+  return last_crc;
+}
+
+
+void PrintHex8(uint8_t *data, uint8_t length) // prints 8-bit data in hex with leading zeroes
+{
+       Serial.print("0x");
+       for (int i=0; i<length; i++) {
+         if (data[i]<0x10) {Serial.print("0");}
+         Serial.print(data[i],HEX);
+         Serial.print(" ");
+       }
+	   Serial.println();
 }
 
 void setup() {
@@ -144,27 +162,14 @@ void setup() {
         Serial.println("Kicker-Funkmaster up and running!");
         Serial.println("(c) by Patrick H. Jill H. Kjell-Arne L. Janina L. Moritz M. Jan N. Fabian S.");
         
-        
-        if (!rf24.init())  { //Initialisierung des Funkmoduls fehlgeschlagen? 
+        if (!rf24.init())  { //Initialisierung des Funkmoduls fehlgeschlagen?
             Serial.println("Init failed");
         }
         #ifdef DEBUG 
         else {
           Serial.println("RF24 successfully initialized");
         }
-        Serial.println("Battery voltage is");
-        Serial.println(rf24.get_battery_voltage());
-        Serial.println("Temperature is");
-        Serial.println(rf24.get_temperature());
-        #endif 
-        
-        rf24.setModemConfig(RH_RF24::GFSK_Rb5Fd10);
-        rf24.setTxPower(0x4f);
-  	rfm24_on();
-        #ifdef DEBUG 
-        Serial.println("Modem configured in GFSK modulation with 5kbs and 10kHz decimation");
         #endif
-
         sei(); // global Interrupt enable
 }
 
@@ -196,18 +201,48 @@ void loop() {
 		}
 		btn_b_state = 0;
 	}
+	uint8_t data[4] = {};
+  	uint8_t buf[4];
 
-	//rf24.send(send_buf, 13);
-  	//delay(100);
-	//if() {
-	rf24.waitAvailableTimeout(500);
-	rf24.recv(recv_buf, &recv_buf_len);
-		Serial.println((char *)recv_buf);
-	//}
+  	uint8_t len = sizeof(buf);
 
 
 
-  	//delay(100);
+  	data[0] = slave_a_address;
+  	data[1] = 0x00;
+  	data[2] = 0x00;
+  	data[3] = calc_crc8(data, 3);
+	Serial.println("Sending Request to slave A:");
+  	PrintHex8(data, 4);
+
+
+  	rf24.send(data, sizeof(data));
+  	rf24.waitPacketSent();
+
+	if (rf24.waitAvailableTimeout(500)) {
+		// Should be a reply message for us now
+		if (rf24.recv(buf, &len))
+		{
+			Serial.print("got reply: ");
+			PrintHex8(buf, 4);
+			if(buf[0] == master_address && buf[1] == 0x01 && calc_crc8(buf, 4) == 0x00) {
+				score_a = buf[2];
+				score_b = 2; //Little debugging bridge
+			}
+		}
+		else {
+			Serial.println("recv failed");
+			score_b = 4; //Also a little debugging bridge
+		}
+	}
+	else {
+		Serial.println("No reply, is Slave A running?");
+		score_b = 5; //Yet another little debugging bridge
+	}
+	delay(400);
+
+
+
 }
 
 ISR(TIMER2_OVF_vect) { // Will be called with roughly 183,1 Hz
