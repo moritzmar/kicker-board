@@ -226,7 +226,10 @@ uint8_t get_goals_from_slave(struct node slave) {
 		{
 			Serial.print("got reply: ");
 			PrintHex8(buf, 4);
-			if(buf[0] == master.address && buf[1] == (SLAVE_GOALS_DETECTED+(slave.order_no*SLAVE_OFFSET)) && calc_crc8(buf, 4) == 0x00) {
+			if(buf[0] == master.address && buf[1] == (SLAVE_GOALS_DETECTED+(slave.order_no*SLAVE_OFFSET)) && calc_crc8(buf, 4) == 0x00 ) {
+				if(buf[2] ==0 ) {
+					return 0; // bail out if score is 0
+				}
 				res = buf[2];
 
 				data[0] = slave.address;
@@ -244,22 +247,22 @@ uint8_t get_goals_from_slave(struct node slave) {
 				Serial.print("Package broken or wrong CRC8 from slave 0x");
 				Serial.print(slave.address, HEX);
   				Serial.println("!");
-				return -1;
+				return -1; // hard failure, return error
 			}
 		}
 		else {
 			Serial.println("recv failed");
-			return -1;
+			return 0; // soft failure, just dont update score
 		}
 	}
 	else {
 		Serial.print("No reply, is Slave 0x");
 		Serial.print(slave.address, HEX);
   		Serial.println(" running?");
-		return -1;
+		return 0; // soft failure, just dont update score
 	}
 
-	return res;
+	return res; // return if everything succeeds
 
 }
 
@@ -295,11 +298,11 @@ void loop() {
 	}
 	slave_res = get_goals_from_slave(slave_a);
 
-	if(slave_res >= 0 && slave_res<=8, score_a < 8) {
+	if(slave_res >= 0 && slave_res<=8 && score_a < 8) {
 		score_a += slave_res;
 	}
 	else {
-		score_a = 10; // 11 represents E symbol for Error
+		score_a = 10; // 10 represents E symbol for Error
 	}
 
 	slave_res = get_goals_from_slave(slave_b);
