@@ -24,7 +24,7 @@
 RH_RF24 rf24 = RH_RF24(RFM24_SS, RFM24_IRQ, RFM24_SDN); //Initialize a new instance of the RadioHead RFM24W driver as rf24
 
 //********************************************************************************************************
-//program settings Slave B
+//program settings Slave A
 
 #define my_address slave_b_address
 #define request_zero 0x00
@@ -33,9 +33,9 @@ RH_RF24 rf24 = RH_RF24(RFM24_SS, RFM24_IRQ, RFM24_SDN); //Initialize a new insta
 #define request_batt 0x03
 #define request_reset 0x0F
 
-#define response_goal 0x21
-#define response_batt 0x22
-#define response_temp 0x23
+#define response_goal 0x11
+#define response_batt 0x12
+#define response_temp 0x13
 
 
 //********************************************************************************************************
