@@ -237,6 +237,8 @@ uint8_t get_goals_from_slave(struct node slave) {
 				Serial.print(slave.address, HEX);
   				Serial.println(":");
 			  	PrintHex8(data, 4);
+				rf24.send(data, sizeof(data));
+  				rf24.waitPacketSent();
 			}
 			else {
 				Serial.print("Package broken or wrong CRC8 from slave 0x");
