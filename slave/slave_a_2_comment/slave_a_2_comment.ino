@@ -26,7 +26,7 @@ RH_RF24 rf24 = RH_RF24(RFM24_SS, RFM24_IRQ, RFM24_SDN); //Initialize a new insta
 //********************************************************************************************************
 //program settings Slave A
 
-#define my_address slave_b_address
+#define my_address slave_a_address
 #define request_zero 0x00
 #define request_goal 0x01
 #define request_temp 0x02
